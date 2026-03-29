@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chunked</title>
+    <style>
+        body {
+            background: #ECE9D8;
+            font-family: 'Tahoma', 'Verdana', 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .window {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #FFFFFF;
+            border: 3px solid;
+            border-color: #DFE0E2 #0A0A0A #0A0A0A #DFE0E2;
+        }
+
+        .title-bar {
+            background: #0A246A;
+            padding: 6px 12px;
+            color: white;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .tab-bar {
+            background: #ECE9D8;
+            padding: 6px 8px 0 8px;
+            border-bottom: 1px solid #C0C0C0;
+        }
+
+        .tab {
+            display: inline-block;
+            background: #ECE9D8;
+            padding: 6px 16px;
+            margin-right: 4px;
+            border: 1px solid #C0C0C0;
+            border-bottom: none;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .tab.active {
+            background: #FFFFFF;
+            border-bottom: 1px solid #FFFFFF;
+        }
+
+        .content {
+            padding: 20px;
+            min-height: 500px;
+        }
+
+        .retro-input {
+            width: 100%;
+            padding: 8px;
+            border: 2px inset #DFE0E2;
+            background: #FFFFFF;
+            font-family: 'Tahoma', monospace;
+            font-size: 12px;
+            margin: 8px 0;
+            box-sizing: border-box;
+        }
+
+        textarea.retro-input {
+            height: 120px;
+            resize: vertical;
+        }
+
+        .retro-btn {
+            background: #C0C0C0;
+            border: 2px solid;
+            border-color: #FFFFFF #0A0A0A #0A0A0A #FFFFFF;
+            padding: 5px 14px;
+            font-family: 'Tahoma', sans-serif;
+            font-weight: bold;
+            font-size: 11px;
+            cursor: pointer;
+            margin: 4px;
+        }
+
+        .retro-btn:active {
+            border-color: #0A0A0A #FFFFFF #FFFFFF #0A0A0A;
+        }
+
+        .retro-btn.danger {
+            background: #C06060;
+            border-color: #FFA0A0 #600000 #600000 #FFA0A0;
+        }
+
+        .deck {
+            background: #F0F0F0;
+            border: 1px solid #C0C0C0;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        .deck:hover {
+            background: #E8E8E8;
+        }
+
+        .deck-name {
+            font-weight: bold;
+            font-size: 14px;
+            display: inline-block;
+        }
+
+        .deck-stats {
+            font-size: 10px;
+            color: #555;
+            margin-top: 4px;
+        }
+
+        .deck-actions {
+            float: right;
+        }
+
+        .chunk-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #C0C0C0;
+            background: #FFFFFF;
+            margin-top: 10px;
+        }
+
+        .chunk-item {
+            padding: 12px;
+            border-bottom: 1px solid #E0E0E0;
+            background: #FFFFF0;
+        }
+
+        .chunk-text {
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .chunk-meta {
+            font-size: 10px;
+            color: #888;
+            margin-top: 6px;
+        }
+
+        .review-item {
+            background: #FFFFE0;
+            border: 2px solid #C0A000;
+            padding: 30px;
+            margin: 15px 0;
+            font-size: 16px;
+            line-height: 1.6;
+            font-family: 'Georgia', serif;
+        }
+
+        .stats-panel {
+            background: #F0F0F0;
+            border: 1px solid #C0C0C0;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        .stat-item {
+            display: inline-block;
+            margin-right: 25px;
+            font-size: 11px;
+        }
+
+        .status-bar {
+            background: #ECE9D8;
+            border-top: 1px solid #C0C0C0;
+            padding: 4px 12px;
+            font-size: 11px;
+        }
+
+        hr {
+            border: 1px solid #C0C0C0;
+            margin: 15px 0;
+        }
+
+        h2 {
+            color: #0A246A;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+
+        .deck-selector {
+            margin-bottom: 15px;
+        }
+
+        .clearfix::after {
+            content: "";
+            clear: both;
+            display: table;
+        }
+
+        .example-box {
+            background: #FFF8DC;
+            border: 1px solid #C0A000;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="window">
+    <div class="title-bar">
+        Chunked
+    </div>
+
+    <div class="tab-bar">
+        <div class="tab active" onclick="showTab('review')">Review</div>
+        <div class="tab" onclick="showTab('create')">Create</div>
+        <div class="tab" onclick="showTab('decks')">Decks</div>
+        <div class="tab" onclick="showTab('library')">Library</div>
+    </div>
+
+    <div class="content">
+        <div id="reviewTab">
+            <div class="stats-panel">
+                <span class="stat-item">Decks: <span id="deckCount">0</span></span>
+                <span class="stat-item">Facts: <span id="chunkCount">0</span></span>
+                <span class="stat-item">Due: <span id="dueCount">0</span></span>
+            </div>
+
+            <div id="noDueMessage" style="display:none; text-align:center; padding:40px;">
+                No facts due for review. Create more or come back later.
+            </div>
+
+            <div id="reviewArea">
+                <div class="review-item" id="reviewChunk">
+                    Ready to review
+                </div>
+                
+                <div style="text-align:center; margin-top:20px;">
+                    <button class="retro-btn" onclick="markForgot()">Forgot (1 day)</button>
+                    <button class="retro-btn" onclick="markHard()">Hard (3 days)</button>
+                    <button class="retro-btn" onclick="markGood()">Good (7 days)</button>
+                    <button class="retro-btn" onclick="markEasy()">Easy (14 days)</button>
+                    <button class="retro-btn" onclick="skipChunk()">Skip</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="createTab" style="display:none;">
+            <h2>Create from Text</h2>
+            <div style="background:#F0F0F0; padding:15px;">
+                <label>Source text:</label>
+                <textarea id="inputText" class="retro-input" placeholder="Paste any text. AI will extract specific, memorizable facts."></textarea>
+                
+                <label>Deck name:</label>
+                <input type="text" id="newDeckName" class="retro-input" placeholder="e.g., Biology, History, Spanish">
+                
+                <button class="retro-btn" onclick="createFromText()">Extract Memorizable Facts</button>
+            </div>
+
+            <div class="example-box">
+                <strong>Example input:</strong><br>
+                "Photosynthesis is the process plants use to convert sunlight into energy. It occurs in the chloroplasts. The main inputs are carbon dioxide and water. The outputs are glucose and oxygen."
+                <br><br>
+                <strong>Will produce facts like:</strong><br>
+                - Photosynthesis is the process plants use to convert sunlight into energy.<br>
+                - Photosynthesis occurs in the chloroplasts.<br>
+                - The main inputs of photosynthesis are carbon dioxide and water.<br>
+                - The outputs of photosynthesis are glucose and oxygen.
+            </div>
+
+            <hr>
+
+            <h2>Create from Topic Name</h2>
+            <div style="background:#F0F0F0; padding:15px;">
+                <label>Topic name:</label>
+                <input type="text" id="topicName" class="retro-input" placeholder="e.g., World War II, Python Programming, Human Heart">
+                
+                <label>Deck name:</label>
+                <input type="text" id="topicDeckName" class="retro-input" placeholder="Deck name (optional - uses topic name if empty)">
+                
+                <button class="retro-btn" onclick="createFromTopic()">Generate Facts from Topic</button>
+            </div>
+            
+            <div class="example-box">
+                <strong>Example topics:</strong><br>
+                "Mitochondria", "French Revolution", "SQL Joins", "Solar System", "Shakespeare"
+            </div>
+
+            <hr>
+
+            <div id="createPreview"></div>
+        </div>
+
+        <div id="decksTab" style="display:none;">
+            <div style="margin-bottom:10px;">
+                <button class="retro-btn" onclick="deleteAllDecks()" class="danger">Delete All Decks</button>
+            </div>
+            <div id="decksList"></div>
+        </div>
+
+        <div id="libraryTab" style="display:none;">
+            <div class="deck-selector">
+                <label>Select deck:</label>
+                <select id="libraryDeckSelect" class="retro-input" style="width:auto;" onchange="renderLibrary()">
+                    <option value="">All decks</option>
+                </select>
+                <button class="retro-btn" onclick="exportData()">Export All</button>
+                <button class="retro-btn" onclick="importData()">Import</button>
+                <input type="file" id="importFile" style="display:none;" accept=".json" onchange="handleImport(event)">
+            </div>
+            <div class="chunk-list" id="libraryList"></div>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <span id="statusMsg">Ready</span>
+        <span style="float:right;"><span id="dateDisplay"></span></span>
+    </div>
+</div>
+
+<script src="https://js.puter.com/v2/"></script>
+<script>
+    let decks = {};
+    let currentReviewQueue = [];
+    let currentReviewIndex = 0;
+    let currentChunkId = null;
+
+    function loadData() {
+        const saved = localStorage.getItem('chunked_decks');
+        if (saved) {
+            decks = JSON.parse(saved);
+        } else {
+            decks = {};
+        }
+        updateStats();
+        renderDecksList();
+        updateDeckSelect();
+    }
+
+    function saveData() {
+        localStorage.setItem('chunked_decks', JSON.stringify(decks));
+        updateStats();
+        renderDecksList();
+        updateDeckSelect();
+    }
+
+    function updateStats() {
+        let totalChunks = 0;
+        let deckCount = Object.keys(decks).length;
+        for (let deckName in decks) {
+            totalChunks += decks[deckName].chunks.length;
+        }
+        
+        const now = Date.now();
+        let dueCount = 0;
+        for (let deckName in decks) {
+            for (let chunk of decks[deckName].chunks) {
+                if (chunk.nextReview <= now) {
+                    dueCount++;
+                }
+            }
+        }
+        
+        document.getElementById('deckCount').innerText = deckCount;
+        document.getElementById('chunkCount').innerText = totalChunks;
+        document.getElementById('dueCount').innerText = dueCount;
+    }
+
+    function updateStatus(msg) {
+        document.getElementById('statusMsg').innerText = msg;
+    }
+
+    async function createFromText() {
+        const text = document.getElementById('inputText').value.trim();
+        const deckName = document.getElementById('newDeckName').value.trim();
+        
+        if (!text) {
+            updateStatus('Enter some text');
+            return;
+        }
+        if (!deckName) {
+            updateStatus('Enter a deck name');
+            return;
+        }
+        
+        updateStatus('AI is extracting memorizable facts...');
+        const previewDiv = document.getElementById('createPreview');
+        previewDiv.innerHTML = '<div style="padding:20px;">Extracting specific, memorizable facts...</div>';
+        
+        try {
+            const prompt = `You are an expert at extracting memorizable facts. Read the text below and extract EVERY specific fact that can be memorized.
+
+RULES:
+1. Each fact must be a complete, standalone sentence
+2. Each fact must contain ONE specific piece of information
+3. Do not combine multiple facts into one
+4. Keep the exact wording that makes the fact clear
+5. Extract ALL facts, even basic ones
+6. Return ONLY a JSON array of strings
+
+TEXT TO PROCESS:
+${text}
+
+EXAMPLE OUTPUT FORMAT:
+["Mitochondria is the powerhouse of the cell.", "The capital of France is Paris.", "Photosynthesis produces oxygen.", "Plants need sunlight for photosynthesis."]
+
+Now extract ALL memorizable facts from the text above. Return ONLY the JSON array.`;
+
+            const response = await puter.ai.chat(prompt, { model: "gpt-5-nano" });
+            let result = response.message.content;
+            
+            let jsonMatch = result.match(/\[[\s\S]*\]/);
+            if (jsonMatch) {
+                result = jsonMatch[0];
+            }
+            
+            const chunks = JSON.parse(result);
+            
+            if (!decks[deckName]) {
+                decks[deckName] = {
+                    name: deckName,
+                    chunks: [],
+                    createdAt: Date.now()
+                };
+            }
+            
+            for (let chunkText of chunks) {
+                decks[deckName].chunks.push({
+                    id: Date.now() + Math.random(),
+                    text: chunkText,
+                    stage: 0,
+                    nextReview: Date.now(),
+                    createdAt: Date.now()
+                });
+            }
+            
+            saveData();
+            updateStatus(`Added ${chunks.length} memorizable facts to deck "${deckName}"`);
+            document.getElementById('inputText').value = '';
+            document.getElementById('newDeckName').value = '';
+            
+            let html = `<h3>Added ${chunks.length} facts to deck "${deckName}":</h3>`;
+            for (let chunk of chunks) {
+                html += `<div style="background:#F8F8F0; border-left:3px solid #C0A000; padding:10px; margin:8px 0;">${escapeHtml(chunk)}</div>`;
+            }
+            previewDiv.innerHTML = html;
+            setTimeout(() => {
+                if (previewDiv.innerHTML === html) {
+                    previewDiv.innerHTML = '';
+                }
+            }, 10000);
+            
+        } catch (error) {
+            updateStatus('Error: ' + error.message);
+            previewDiv.innerHTML = `<div style="color:red; padding:20px;">Failed: ${error.message}</div>`;
+        }
+    }
+
+    async function createFromTopic() {
+        const topic = document.getElementById('topicName').value.trim();
+        let deckName = document.getElementById('topicDeckName').value.trim();
+        
+        if (!topic) {
+            updateStatus('Enter a topic name');
+            return;
+        }
+        
+        if (!deckName) {
+            deckName = topic;
+        }
+        
+        updateStatus(`AI is generating facts about ${topic}...`);
+        const previewDiv = document.getElementById('createPreview');
+        previewDiv.innerHTML = '<div style="padding:20px;">Generating memorizable facts from topic...</div>';
+        
+        try {
+            const prompt = `You are an expert educator. Generate a list of specific, memorizable facts about "${topic}".
+
+RULES:
+1. Each fact must be a complete, standalone sentence
+2. Each fact must contain ONE specific piece of information
+3. Cover key concepts, definitions, dates, relationships, and important details
+4. Generate 15-25 facts that someone learning about "${topic}" should memorize
+5. Return ONLY a JSON array of strings
+
+EXAMPLE FORMAT:
+["The mitochondria is the powerhouse of the cell.", "Mitochondria convert glucose into ATP through cellular respiration.", "The outer membrane of mitochondria is smooth and permeable."]
+
+Now generate memorizable facts about "${topic}". Return ONLY the JSON array.`;
+
+            const response = await puter.ai.chat(prompt, { model: "gpt-5-nano" });
+            let result = response.message.content;
+            
+            let jsonMatch = result.match(/\[[\s\S]*\]/);
+            if (jsonMatch) {
+                result = jsonMatch[0];
+            }
+            
+            const chunks = JSON.parse(result);
+            
+            if (!decks[deckName]) {
+                decks[deckName] = {
+                    name: deckName,
+                    chunks: [],
+                    createdAt: Date.now()
+                };
+            }
+            
+            for (let chunkText of chunks) {
+                decks[deckName].chunks.push({
+                    id: Date.now() + Math.random(),
+                    text: chunkText,
+                    stage: 0,
+                    nextReview: Date.now(),
+                    createdAt: Date.now()
+                });
+            }
+            
+            saveData();
+            updateStatus(`Added ${chunks.length} facts about "${topic}" to deck "${deckName}"`);
+            document.getElementById('topicName').value = '';
+            document.getElementById('topicDeckName').value = '';
+            
+            let html = `<h3>Added ${chunks.length} facts about "${topic}":</h3>`;
+            for (let chunk of chunks.slice(0, 20)) {
+                html += `<div style="background:#F8F8F0; border-left:3px solid #C0A000; padding:10px; margin:8px 0;">${escapeHtml(chunk)}</div>`;
+            }
+            if (chunks.length > 20) {
+                html += `<div>... and ${chunks.length - 20} more facts</div>`;
+            }
+            previewDiv.innerHTML = html;
+            setTimeout(() => {
+                if (previewDiv.innerHTML === html) {
+                    previewDiv.innerHTML = '';
+                }
+            }, 10000);
+            
+        } catch (error) {
+            updateStatus('Error: ' + error.message);
+            previewDiv.innerHTML = `<div style="color:red; padding:20px;">Failed: ${error.message}</div>`;
+        }
+    }
+
+    function startReview() {
+        const now = Date.now();
+        let dueChunks = [];
+        
+        for (let deckName in decks) {
+            for (let chunk of decks[deckName].chunks) {
+                if (chunk.nextReview <= now) {
+                    dueChunks.push({
+                        deck: deckName,
+                        chunk: chunk
+                    });
+                }
+            }
+        }
+        
+        if (dueChunks.length === 0) {
+            document.getElementById('noDueMessage').style.display = 'block';
+            document.getElementById('reviewArea').style.display = 'none';
+            return;
+        }
+        
+        document.getElementById('noDueMessage').style.display = 'none';
+        document.getElementById('reviewArea').style.display = 'block';
+        
+        dueChunks.sort(() => Math.random() - 0.5);
+        currentReviewQueue = dueChunks;
+        currentReviewIndex = 0;
+        showCurrentChunk();
+    }
+
+    function showCurrentChunk() {
+        if (currentReviewIndex >= currentReviewQueue.length) {
+            startReview();
+            return;
+        }
+        
+        const item = currentReviewQueue[currentReviewIndex];
+        currentChunkId = item.chunk.id;
+        document.getElementById('reviewChunk').innerHTML = escapeHtml(item.chunk.text);
+        updateStatus(`Deck: ${item.deck} | ${currentReviewIndex + 1} of ${currentReviewQueue.length}`);
+    }
+
+    function updateChunkStage(days) {
+        if (!currentChunkId) return;
+        
+        for (let deckName in decks) {
+            const chunk = decks[deckName].chunks.find(c => c.id === currentChunkId);
+            if (chunk) {
+                if (days === 1) {
+                    chunk.stage = Math.max(0, chunk.stage - 2);
+                } else if (days === 3) {
+                    chunk.stage = chunk.stage + 1;
+                } else if (days === 7) {
+                    chunk.stage = chunk.stage + 2;
+                } else if (days === 14) {
+                    chunk.stage = chunk.stage + 3;
+                }
+                
+                chunk.nextReview = Date.now() + (days * 24 * 60 * 60 * 1000);
+                break;
+            }
+        }
+        
+        saveData();
+        currentReviewIndex++;
+        showCurrentChunk();
+    }
+
+    function markForgot() { updateChunkStage(1); }
+    function markHard() { updateChunkStage(3); }
+    function markGood() { updateChunkStage(7); }
+    function markEasy() { updateChunkStage(14); }
+    
+    function skipChunk() {
+        currentReviewIndex++;
+        showCurrentChunk();
+    }
+
+    function deleteDeck(deckName) {
+        if (confirm(`Delete deck "${deckName}" and all its facts? This cannot be undone.`)) {
+            delete decks[deckName];
+            saveData();
+            updateStatus(`Deleted deck "${deckName}"`);
+            renderDecksList();
+            renderLibrary();
+        }
+    }
+
+    function deleteAllDecks() {
+        if (confirm('Delete ALL decks and ALL facts? This cannot be undone.')) {
+            decks = {};
+            saveData();
+            updateStatus('All decks deleted');
+            renderDecksList();
+            renderLibrary();
+            startReview();
+        }
+    }
+
+    function renderDecksList() {
+        const container = document.getElementById('decksList');
+        if (!container) return;
+        
+        if (Object.keys(decks).length === 0) {
+            container.innerHTML = '<div style="padding:20px; text-align:center;">No decks yet. Create one in the Create tab.</div>';
+            return;
+        }
+        
+        let html = '';
+        for (let deckName in decks) {
+            const deck = decks[deckName];
+            const now = Date.now();
+            const dueCount = deck.chunks.filter(c => c.nextReview <= now).length;
+            html += `
+                <div class="deck clearfix">
+                    <div style="display:inline-block; width:65%;">
+                        <div class="deck-name">${escapeHtml(deckName)}</div>
+                        <div class="deck-stats">${deck.chunks.length} facts | ${dueCount} due | Created ${new Date(deck.createdAt).toLocaleDateString()}</div>
+                    </div>
+                    <div class="deck-actions">
+                        <button class="retro-btn" onclick="selectDeck('${escapeHtml(deckName).replace(/'/g, "\\'")}')">Study</button>
+                        <button class="retro-btn danger" onclick="deleteDeck('${escapeHtml(deckName).replace(/'/g, "\\'")}')">Delete Deck</button>
+                    </div>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+
+    function selectDeck(deckName) {
+        showTab('review');
+        startReview();
+    }
+
+    function renderLibrary() {
+        const select = document.getElementById('libraryDeckSelect');
+        const selectedDeck = select.value;
+        const container = document.getElementById('libraryList');
+        
+        let allChunks = [];
+        for (let deckName in decks) {
+            if (!selectedDeck || selectedDeck === deckName) {
+                for (let chunk of decks[deckName].chunks) {
+                    allChunks.push({
+                        deck: deckName,
+                        chunk: chunk
+                    });
+                }
+            }
+        }
+        
+        if (allChunks.length === 0) {
+            container.innerHTML = '<div style="padding:20px; text-align:center;">No facts</div>';
+            return;
+        }
+        
+        let html = '';
+        for (let item of allChunks) {
+            const dueDate = new Date(item.chunk.nextReview).toLocaleDateString();
+            const stageText = item.chunk.stage >= 10 ? 'Mastered' : `Stage ${item.chunk.stage}`;
+            html += `
+                <div class="chunk-item">
+                    <div class="chunk-text">${escapeHtml(item.chunk.text)}</div>
+                    <div class="chunk-meta">
+                        Deck: ${escapeHtml(item.deck)} | ${stageText} | Next: ${dueDate}
+                        <button class="retro-btn" style="float:right;" onclick="deleteChunk('${item.chunk.id}')">Delete</button>
+                        <button class="retro-btn" style="float:right; margin-right:5px;" onclick="editChunk('${item.chunk.id}')">Edit</button>
+                    </div>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+
+    function editChunk(id) {
+        for (let deckName in decks) {
+            const chunk = decks[deckName].chunks.find(c => c.id === id);
+            if (chunk) {
+                const newText = prompt('Edit fact:', chunk.text);
+                if (newText !== null) {
+                    chunk.text = newText;
+                    saveData();
+                    renderLibrary();
+                    updateStatus('Fact updated');
+                }
+                return;
+            }
+        }
+    }
+
+    function deleteChunk(id) {
+        if (confirm('Delete this fact?')) {
+            for (let deckName in decks) {
+                const index = decks[deckName].chunks.findIndex(c => c.id === id);
+                if (index !== -1) {
+                    decks[deckName].chunks.splice(index, 1);
+                    if (decks[deckName].chunks.length === 0) {
+                        delete decks[deckName];
+                    }
+                    saveData();
+                    renderLibrary();
+                    updateStatus('Fact deleted');
+                    return;
+                }
+            }
+        }
+    }
+
+    function updateDeckSelect() {
+        const select = document.getElementById('libraryDeckSelect');
+        select.innerHTML = '<option value="">All decks</option>';
+        for (let deckName in decks) {
+            select.innerHTML += `<option value="${escapeHtml(deckName)}">${escapeHtml(deckName)}</option>`;
+        }
+    }
+
+    function exportData() {
+        const data = JSON.stringify(decks, null, 2);
+        const blob = new Blob([data], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chunked_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        updateStatus('Exported');
+    }
+
+    function importData() {
+        document.getElementById('importFile').click();
+    }
+
+    function handleImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const imported = JSON.parse(e.target.result);
+                decks = imported;
+                saveData();
+                renderLibrary();
+                updateStatus('Imported');
+            } catch (error) {
+                updateStatus('Error parsing file');
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    function showTab(tabName) {
+        document.getElementById('reviewTab').style.display = tabName === 'review' ? 'block' : 'none';
+        document.getElementById('createTab').style.display = tabName === 'create' ? 'block' : 'none';
+        document.getElementById('decksTab').style.display = tabName === 'decks' ? 'block' : 'none';
+        document.getElementById('libraryTab').style.display = tabName === 'library' ? 'block' : 'none';
+        
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(tab => {
+            tab.classList.remove('active');
+        });
+        event.target.classList.add('active');
+        
+        if (tabName === 'review') startReview();
+        if (tabName === 'decks') renderDecksList();
+        if (tabName === 'library') renderLibrary();
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    function setDate() {
+        const d = new Date();
+        document.getElementById('dateDisplay').innerText = d.toLocaleDateString();
+    }
+
+    setDate();
+    loadData();
+    startReview();
+</script>
+</body>
+</html>
